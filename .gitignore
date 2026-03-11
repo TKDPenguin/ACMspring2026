@@ -1,2 +1,12 @@
 ACMspring2026 copy/spec.md
 app/src/ACMspring2026/FoodInfo.swift
+# macOS
+.DS_Store
+
+# Xcode user data
+xcuserdata/
+*.xcuserstate
+
+# Xcode build
+DerivedData/
+build/
