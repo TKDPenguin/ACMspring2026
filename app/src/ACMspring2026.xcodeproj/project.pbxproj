@@ -24,9 +24,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		9FAFA8F72F53F05600C79536 /* ACMspring2026.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = ACMspring2026.app; path = "/Users/ruthvik/Downloads/ACMspring2026/app/src/build/Debug-iphoneos/ACMspring2026.app"; sourceTree = "<absolute>"; };
 		9FAFA9162F53F1E300C79536 /* ACMspring2026Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ACMspring2026Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9FAFA9172F53F1E700C79536 /* ACMspring2026UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ACMspring2026UITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9FAFA9182F54E3F600C79536 /* ACMspring2026.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ACMspring2026.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -81,6 +81,7 @@
 				9FE9BB2E2F38D7E500084870 /* ACMspring2026 */,
 				9FAFA9162F53F1E300C79536 /* ACMspring2026Tests.xctest */,
 				9FAFA9172F53F1E700C79536 /* ACMspring2026UITests.xctest */,
+				9FAFA9182F54E3F600C79536 /* ACMspring2026.app */,
 			);
 			sourceTree = "<group>";
 		};
@@ -106,7 +107,7 @@
 			packageProductDependencies = (
 			);
 			productName = ACMspring2026;
-			productReference = 9FAFA8F72F53F05600C79536 /* ACMspring2026.app */;
+			productReference = 9FAFA9182F54E3F600C79536 /* ACMspring2026.app */;
 			productType = "com.apple.product-type.application";
 		};
 		9FE9BB382F38D7E600084870 /* ACMspring2026Tests */ = {

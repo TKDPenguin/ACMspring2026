@@ -16,46 +16,98 @@ struct NutritionData {
     var satFat: String = "0"
 }
 
+protocol NutritionService {
+    static var shared: NutritionService { get }
+    func fetchNutrition(for food: String, completion: @escaping (NutritionData) -> Void) ;
+}
 
-class NutritionService {
-    static let shared = NutritionService()
+
+class USDANutritionService : NutritionService {
+    static let shared: NutritionService = USDANutritionService()
     
- 
-    private let apiBaseURL = "https://api.calorieninjas.com/v1/nutrition"
+    private let apiKey = "DEMO_KEY"
+    private let apiURL = "https://api.nal.usda.gov/fdc/v1/foods/search"
     
     func fetchNutrition(for food: String, completion: @escaping (NutritionData) -> Void) {
-        let encodedFood = food.replacingOccurrences(of: "_", with: " ").addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        let urlString = "\(apiBaseURL)?query=\(encodedFood)"
         
-        guard let url = URL(string: urlString) else {
+        guard let url = URL(string: "\(apiURL)?api_key=\(apiKey)") else {
             completion(NutritionData())
             return
         }
         
         var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = [
+            "query": food.replacingOccurrences(of: "_", with: " "),
+            "dataType": ["Foundation", "SR Legacy"],
+            "pageSize": 1
+        ]
+        
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
         
         URLSession.shared.dataTask(with: request) { data, response, error in
+            
             var nutritionData = NutritionData()
             
-            if let data = data {
-                do {
-                    if let jsonArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]],
-                       let firstItem = jsonArray.first {
-                        nutritionData.calories = String(format: "%.0f", (firstItem["calories"] as? NSNumber)?.doubleValue ?? 0)
-                        nutritionData.protein = String(format: "%.0f", (firstItem["protein_g"] as? NSNumber)?.doubleValue ?? 0)
-                        nutritionData.carbs = String(format: "%.0f", (firstItem["carbohydrates_g"] as? NSNumber)?.doubleValue ?? 0)
-                        nutritionData.sugars = String(format: "%.0f", (firstItem["sugar_g"] as? NSNumber)?.doubleValue ?? 0)
-                        nutritionData.satFat = String(format: "%.0f", (firstItem["fat_saturated_g"] as? NSNumber)?.doubleValue ?? 0)
-                        nutritionData.unsatFat = String(format: "%.0f", ((firstItem["fat_total_g"] as? NSNumber)?.doubleValue ?? 0) - ((firstItem["fat_saturated_g"] as? NSNumber)?.doubleValue ?? 0))
-                    }
-                } catch {
-                    print("Error parsing nutrition data: \(error)")
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    completion(nutritionData)
                 }
+                return
+            }
+            
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let foods = json["foods"] as? [[String: Any]],
+                   let firstFood = foods.first,
+                   let nutrients = firstFood["foodNutrients"] as? [[String: Any]] {
+                    
+                    for nutrient in nutrients {
+                        print(json)
+                        guard let id = nutrient["nutrientId"] as? Int,
+                              let value = nutrient["value"] as? Double else { continue }
+                        
+                        switch id {
+                        case 1008: // Energy (kcal)
+                            nutritionData.calories = String(format: "%.0f", value)
+                            
+                        case 1005: // Carbohydrate
+                            nutritionData.carbs = String(format: "%.0f", value)
+                            
+                        case 2000: // Sugars
+                            nutritionData.sugars = String(format: "%.0f", value)
+                            
+                        case 1003: // Protein
+                            nutritionData.protein = String(format: "%.0f", value)
+                            
+                        case 1004: // Total Fat
+                            let totalFat = value
+                            nutritionData.unsatFat = String(format: "%.0f", totalFat)
+                            
+                        case 1258: // Saturated Fat
+                            nutritionData.satFat = String(format: "%.0f", value)
+                            
+                        default:
+                            break
+                        }
+                    }
+                    
+                    // Adjust unsaturated fat (total - saturated)
+                    if let total = Double(nutritionData.unsatFat),
+                       let sat = Double(nutritionData.satFat) {
+                        nutritionData.unsatFat = String(format: "%.0f", max(total - sat, 0))
+                    }
+                }
+            } catch {
+                print("Error parsing USDA data:", error)
             }
             
             DispatchQueue.main.async {
                 completion(nutritionData)
             }
+            
         }.resume()
     }
 }
@@ -65,6 +117,8 @@ struct FoodImageView: View {
     let name: String
     @State private var nutritionData = NutritionData()
     @State private var isLoading = true
+    @State private var nutritionService: NutritionService = USDANutritionService()
+    
     
     var body: some View {
         ZStack {
@@ -87,15 +141,15 @@ struct FoodImageView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
                 
-                // Tab bar
-                HStack(spacing: 16) {
-                    TabBarItem(icon: "📈", label: "Stats")
-                    TabBarItem(icon: "⚡", label: "")
-                    TabBarItem(icon: "⚠️", label: "")
-                    TabBarItem(icon: "☰", label: "")
-                    Spacer()
-                }
-                .padding(.horizontal, 20)
+//                // Tab bar
+//                HStack(spacing: 16) {
+//                    TabBarItem(icon: "📈", label: "Stats")
+//                    TabBarItem(icon: "⚡", label: "")
+//                    TabBarItem(icon: "⚠️", label: "")
+//                    TabBarItem(icon: "☰", label: "")
+//                    Spacer()
+//                }
+//                .padding(.horizontal, 20)
                 
                 VStack(spacing: 16) {
                     HStack(spacing: 16) {
@@ -163,14 +217,14 @@ struct FoodImageView: View {
             }
         }
         .onAppear {
-            NutritionService.shared.fetchNutrition(for: name) { data in
+            nutritionService.fetchNutrition(for: name) { data in
                 self.nutritionData = data
                 self.isLoading = false
             }
         }
         .onChange(of: name) { newName in
             isLoading = true
-            NutritionService.shared.fetchNutrition(for: newName) { data in
+            nutritionService.fetchNutrition(for: newName) { data in
                 self.nutritionData = data
                 self.isLoading = false
             }
@@ -232,4 +286,8 @@ struct TabBarItem: View {
         .background(Color(UIColor(red: 0.97, green: 0.97, blue: 0.97, alpha: 1.0)))
         .cornerRadius(16)
     }
+}
+
+#Preview {
+//    FoodImageView(name: "Apple Pie")
 }

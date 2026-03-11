@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var prediction: String = ""
     @State private var showFoodInfo = false
     
+    
     let labels = [
         "apple_pie",
         "baby_back_ribs",
@@ -120,6 +121,7 @@ struct ContentView: View {
         "waffles"
     ]
     
+    
     func pixelBuffer(from image: UIImage, size: CGSize) -> CVPixelBuffer? {
         let attrs = [
             kCVPixelBufferCGImageCompatibilityKey: kCFBooleanTrue!,
@@ -184,6 +186,9 @@ struct ContentView: View {
         }
     }
     
+            
+    
+    
     var body: some View {
         NavigationView {
             ZStack {
@@ -228,7 +233,7 @@ struct ContentView: View {
                         }
                         .frame(maxWidth: .infinity)
                         
-                        NavigationLink(destination: FoodImageView(name: prediction), isActive: $showFoodInfo) {
+                        NavigationLink(destination: FoodInformationView(name: prediction), isActive: $showFoodInfo) {
                             EmptyView()
                         }
                     }
