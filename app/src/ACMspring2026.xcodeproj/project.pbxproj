@@ -29,22 +29,9 @@
 		9FAFA9182F54E3F600C79536 /* ACMspring2026.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ACMspring2026.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		9FE9BB572F38DB3300084870 /* Exceptions for "ACMspring2026" folder in "ACMspring2026" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 9FE9BB2B2F38D7E500084870 /* ACMspring2026 */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9FE9BB2E2F38D7E500084870 /* ACMspring2026 */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				9FE9BB572F38DB3300084870 /* Exceptions for "ACMspring2026" folder in "ACMspring2026" target */,
-			);
 			path = ACMspring2026;
 			sourceTree = "<group>";
 		};
