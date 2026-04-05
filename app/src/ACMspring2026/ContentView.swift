@@ -15,111 +15,10 @@ struct ContentView: View {
     @State private var selectedImage: UIImage?
     @State private var prediction: String = ""
     @State private var showFoodInfo = false
-    
-    
-    let labels = [
-        "apple_pie",
-        "baby_back_ribs",
-        "baklava",
-        "beef_carpaccio",
-        "beef_tartare",
-        "beet_salad",
-        "beignets",
-        "bibimbap",
-        "bread_pudding",
-        "breakfast_burrito",
-        "bruschetta",
-        "caesar_salad",
-        "cannoli",
-        "caprese_salad",
-        "carrot_cake",
-        "ceviche",
-        "cheese_plate",
-        "cheesecake",
-        "chicken_curry",
-        "chicken_quesadilla",
-        "chicken_wings",
-        "chocolate_cake",
-        "chocolate_mousse",
-        "churros",
-        "clam_chowder",
-        "club_sandwich",
-        "crab_cakes",
-        "creme_brulee",
-        "croque_madame",
-        "cup_cakes",
-        "deviled_eggs",
-        "donuts",
-        "dumplings",
-        "edamame",
-        "eggs_benedict",
-        "escargots",
-        "falafel",
-        "filet_mignon",
-        "fish_and_chips",
-        "foie_gras",
-        "french_fries",
-        "french_onion_soup",
-        "french_toast",
-        "fried_calamari",
-        "fried_rice",
-        "frozen_yogurt",
-        "garlic_bread",
-        "gnocchi",
-        "greek_salad",
-        "grilled_cheese_sandwich",
-        "grilled_salmon",
-        "guacamole",
-        "gyoza",
-        "hamburger",
-        "hot_and_sour_soup",
-        "hot_dog",
-        "huevos_rancheros",
-        "hummus",
-        "ice_cream",
-        "lasagna",
-        "lobster_bisque",
-        "lobster_roll_sandwich",
-        "macaroni_and_cheese",
-        "macarons",
-        "miso_soup",
-        "mussels",
-        "nachos",
-        "omelette",
-        "onion_rings",
-        "oysters",
-        "pad_thai",
-        "paella",
-        "pancakes",
-        "panna_cotta",
-        "peking_duck",
-        "pho",
-        "pizza",
-        "pork_chop",
-        "poutine",
-        "prime_rib",
-        "pulled_pork_sandwich",
-        "ramen",
-        "ravioli",
-        "red_velvet_cake",
-        "risotto",
-        "samosa",
-        "sashimi",
-        "scallops",
-        "seaweed_salad",
-        "shrimp_and_grits",
-        "spaghetti_bolognese",
-        "spaghetti_carbonara",
-        "spring_rolls",
-        "steak",
-        "strawberry_shortcake",
-        "sushi",
-        "tacos",
-        "takoyaki",
-        "tiramisu",
-        "tuna_tartare",
-        "waffles"
-    ]
+    @State private var isLoading = false
+    @State private var identificationSource = ""
+
+    private let confidenceThreshold: Float = 0.75
     
     
     func pixelBuffer(from image: UIImage, size: CGSize) -> CVPixelBuffer? {
@@ -162,27 +61,50 @@ struct ContentView: View {
     }
     
     func classifyImage(_ uiImage: UIImage) {
-        do {
-            let model = try FoodClassifier()
-            
-            guard let buffer = pixelBuffer(from: uiImage, size: CGSize(width: 384, height: 384)) else {
-                prediction = "Failed to process image"
-                return
+        Task {
+            isLoading = true
+            defer { isLoading = false }
+
+            do {
+                let model = try FoodClassifier()
+
+                guard let buffer = pixelBuffer(from: uiImage, size: CGSize(width: 384, height: 384)) else {
+                    prediction = "Failed to process image"
+                    return
+                }
+
+                let output = try model.prediction(x_1: buffer)
+                let multiArray = output.var_2422
+                let pointer = multiArray.dataPointer.bindMemory(to: Float32.self, capacity: multiArray.count)
+                let logits = Array(UnsafeBufferPointer(start: pointer, count: multiArray.count))
+
+                // Softmax
+                let maxLogit = logits.max() ?? 0
+                let exps = logits.map { exp($0 - maxLogit) }
+                let expSum = exps.reduce(0, +)
+                let probs = exps.map { $0 / expSum }
+
+                // Top-3
+                let indexed = probs.enumerated().sorted { $0.element > $1.element }
+                let topK = Array(indexed.prefix(3))
+                let topLabel = FoodLabels.all[topK[0].offset]
+                let topConfidence = topK[0].element
+
+                if topConfidence >= confidenceThreshold {
+                    prediction = topLabel
+                    identificationSource = "classifier"
+                } else {
+                    let candidates = topK.map { (label: FoodLabels.all[$0.offset],
+                                                 confidence: $0.element) }
+                    prediction = try await ClaudeClient.shared.identify(image: uiImage,
+                                                                        candidates: candidates)
+                    identificationSource = "claude"
+                }
+
+            } catch {
+                prediction = "Prediction failed: \(error.localizedDescription)"
+                print("Error:", error)
             }
-            
-            let output = try model.prediction(x_1: buffer)
-            let multiArray = output.var_2422
-            print(multiArray)
-            let pointer = multiArray.dataPointer.bindMemory(to: Float32.self, capacity: multiArray.count)
-            let values = Array(UnsafeBufferPointer(start: pointer, count: multiArray.count))
-            
-            if let maxIndex = values.firstIndex(of: values.max() ?? 0) {
-                prediction = labels[maxIndex]
-            }
-            
-        } catch {
-            prediction = "Prediction failed"
-            print("CoreML Error:", error)
         }
     }
     
@@ -212,19 +134,22 @@ struct ContentView: View {
                 
 
                     
-                    if !prediction.isEmpty {
+                    if isLoading {
+                        ProgressView("Identifying...")
+                            .padding()
+                    } else if !prediction.isEmpty {
                         VStack(spacing: 10) {
-                            Text("Prediction:")
-                                .font(.headline)
+                            Text(prediction.replacingOccurrences(of: "_", with: " ").capitalized)
+                                .font(.title2.bold())
                                 .foregroundColor(.black)
                                 .multilineTextAlignment(.center)
 
-                            Text(prediction)
-                                .font(.title2)
-                                .bold()
-                                .foregroundColor(.black)
-                                .multilineTextAlignment(.center)
-                            
+                            if identificationSource == "claude" {
+                                Text("Verified by Claude")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
                             Button("View Nutrition Info") {
                                 showFoodInfo = true
                             }
@@ -232,10 +157,11 @@ struct ContentView: View {
                             .foregroundColor(.blue)
                         }
                         .frame(maxWidth: .infinity)
-                        
-                        NavigationLink(destination: FoodInformationView(name: prediction), isActive: $showFoodInfo) {
-                            EmptyView()
-                        }
+
+                        NavigationLink(
+                            destination: FoodInformationView(name: prediction),
+                            isActive: $showFoodInfo
+                        ) { EmptyView() }
                     }
 
                     Spacer()
