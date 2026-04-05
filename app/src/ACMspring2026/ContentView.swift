@@ -14,7 +14,9 @@ struct ContentView: View {
     @State private var showCamera = false
     @State private var selectedImage: UIImage?
     @State private var prediction: String = ""
+    @State private var rawPrediction: String = ""
     @State private var showFoodInfo = false
+    @State private var triggerCapture = false
     
     
     
@@ -96,7 +98,10 @@ struct ContentView: View {
             let values = Array(UnsafeBufferPointer(start: pointer, count: multiArray.count))
             
             if let maxIndex = values.firstIndex(of: values.max() ?? 0) {
-                prediction = labels[maxIndex]
+                let raw = labels[maxIndex]
+                
+                rawPrediction = raw
+                prediction = raw.replacingOccurrences(of: "_", with: " ").capitalized
             }
             
         } catch {
@@ -109,63 +114,67 @@ struct ContentView: View {
     
     
     var body: some View {
-            NavigationView {
+        NavigationView {
+            ZStack {
+                Color.black.ignoresSafeArea()
+                
                 VStack(spacing: 0) {
-                    
-                    CameraView(image: $selectedImage)
-                        .frame(width: UIScreen.main.bounds.width * 1,
-                               height: UIScreen.main.bounds.height * 0.9
-                                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 25, style: .continuous))
-                        .offset(y: -50)
-                        
-
+                    // Camera Feed
+                    CameraView(image: $selectedImage, triggerCapture: $triggerCapture)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: UIScreen.main.bounds.height * 0.65)
+                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
                         .onChange(of: selectedImage) { newImage in
                             if let image = newImage {
                                 classifyImage(image)
                             }
                         }
                     
-                     
                     Spacer()
                     
                     
-                    if !prediction.isEmpty {
-                        Button(action: {
-                                if let image = selectedImage {
-                                    classifyImage(image)
-                                    showFoodInfo = true
-                                }
-                            }) {
-                                Text("Prediction: \(prediction)")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                    .padding()
-                                    .frame(width: UIScreen.main.bounds.width * 0.75) // 75% width
-                                    .background(Color.blue)
-                                    .cornerRadius(12)
-                                    .shadow(radius: 5)
-                            }
-                            .padding(.top, 10)
-             
-                        NavigationLink(
-                            destination: FoodInformationView(name: prediction),
-                            isActive: $showFoodInfo
-                        ) {
-                            EmptyView()
+                    Button(action: {
+                        triggerCapture = true
+                    }) {
+                        ZStack {
+                            
+                            Circle()
+                                .fill(Color.white.opacity(0.3))
+                                .frame(width: 60, height: 60)
+                            
+                          
+                            Circle()
+                                .fill(Color.white.opacity(0.7))
+                                .frame(width: 48, height: 48)
                         }
                     }
+                    .padding(.bottom, 20)
                     
                     
+                    if !prediction.isEmpty {
+                        NavigationLink(
+                            destination: FoodInformationView(name: rawPrediction)
+                        ) {
+                            Text(prediction)
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 50)
+                                .background(Color.orange.opacity(0.7))
+                                .cornerRadius(25)
+                        }
+                        .padding(.horizontal, 30)
+                        .padding(.bottom, 30)
+                    }
+                    
+                    Spacer()
                 }
-                .padding(.top)
-                .edgesIgnoringSafeArea(.top)
-                .background(Color.white)
-                Spacer()
-                
             }
-        
+            .navigationBarHidden(true)
         }
+    }
 }
 
 #Preview {

@@ -16,9 +16,9 @@ struct FoodInformationView: View {
                 .edgesIgnoringSafeArea(.all)
             
             VStack(spacing: 24) {
-                // Header with food name and status dot
+
                 HStack(spacing: 12) {
-                    Text(name)
+                    Text(name.replacingOccurrences(of: "_", with: " ").capitalized)
                         .font(.system(size: 40, weight: .bold))
                         .foregroundColor(.black)
                     
@@ -43,7 +43,7 @@ struct FoodInformationView: View {
                         
                         NutritionBox(
                             label: "SUGARS",
-                            value: foodData?.sugars ?? "N/A",
+                            value: "21.0",
                             unit: "g",
                             color: Color(red: 0.9, green: 0.4, blue: 0.6)
                         )
@@ -142,7 +142,7 @@ struct FoodInformationView: View {
 
 
 #Preview {
-    FoodInformationView(name: "apple")
+    FoodInformationView(name: "apple pie")
 }
 
 
