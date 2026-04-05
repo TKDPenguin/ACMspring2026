@@ -419,11 +419,11 @@ app/src/ACMspring2026/
 - [x] Update the `ContentView` body to show `ProgressView` and the "Verified by Claude" badge
 - [x] Create `ClaudeClient.swift`
 - [x] Delete `FoodInfo.swift` (file removed from disk)
-- [ ] **[Xcode]** Add `FoodLabels.swift` and `ClaudeClient.swift` to the Xcode project target
-- [ ] **[Xcode]** Remove the dangling `FoodInfo.swift` reference from the Xcode project navigator (Move to Trash was not done via Xcode)
-- [ ] **[Xcode]** Create `Secrets.plist` (File → New → File → Property List), add key `ANTHROPIC_API_KEY` with your key, and add the file to the app target
-- [ ] **[Xcode]** Add `Secrets.plist` to `.gitignore`
-- [ ] **[Xcode]** Create and commit `Secrets.plist.template`
+- [x] **[Xcode]** Add `FoodLabels.swift` and `ClaudeClient.swift` to the Xcode project target
+- [x] **[Xcode]** Remove the dangling `FoodInfo.swift` reference from the Xcode project navigator (Move to Trash was not done via Xcode)
+- [x] **[Xcode]** Create `Secrets.plist` (File → New → File → Property List), add key `ANTHROPIC_API_KEY` with your key, and add the file to the app target
+- [x] **[Xcode]** Add `Secrets.plist` to `.gitignore`
+- [x] **[Xcode]** Create and commit `Secrets.plist.template`
 - [ ] Build and run on a physical device; test with a clearly identifiable food (fast path)
 - [ ] Test with an ambiguous or unusual food photo (Claude path)
 - [ ] Verify the prediction flows correctly into `FoodInformationView`

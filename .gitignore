@@ -10,3 +10,5 @@ xcuserdata/
 # Xcode build
 DerivedData/
 build/
+
+Secrets.plist
