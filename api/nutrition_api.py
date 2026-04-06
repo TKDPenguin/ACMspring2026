@@ -1,6 +1,8 @@
 import os
+import json
 import logging
 import httpx
+import anthropic
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -11,6 +13,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 log = logging.getLogger(__name__)
 
 USDA_API_KEY = os.getenv("USDA_API_KEY")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 USDA_SEARCH_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
 
 app = FastAPI(title="Food Nutrition API")
@@ -111,6 +114,59 @@ async def get_nutrition(food_name: str):
     if not result:
         raise HTTPException(status_code=404, detail=f"No nutrition data found for '{food_name}'")
     return result
+
+
+class FoodInsights(BaseModel):
+    food_name:   str
+    pairings:    list[str] = []
+    risks:       list[str] = []
+    benefits:    list[str] = []
+
+
+def build_insights_prompt(food_name: str) -> str:
+    return f"""Provide factual nutritional insights about "{food_name}".
+Return ONLY valid JSON with exactly these three keys (no markdown, no explanation):
+{{
+  "pairings": ["<5 foods that pair well with {food_name}, each ≤12 words>"],
+  "risks": ["<3-5 health risks or dietary concerns, each ≤20 words>"],
+  "benefits": ["<3-5 health benefits, each ≤20 words>"]
+}}"""
+
+
+async def query_claude_insights(food_name: str) -> FoodInsights:
+    if not ANTHROPIC_API_KEY:
+        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY is not configured")
+
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+
+    log.info(f"[Claude] Requesting insights for '{food_name}' ...")
+    message = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=512,
+        messages=[{"role": "user", "content": build_insights_prompt(food_name)}],
+    )
+
+    raw = message.content[0].text.strip()
+    log.info(f"[Claude] Raw response: {raw}")
+
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        log.error(f"[Claude] Failed to parse JSON: {raw}")
+        raise HTTPException(status_code=502, detail="LLM returned invalid JSON")
+
+    return FoodInsights(
+        food_name=food_name,
+        pairings=parsed.get("pairings", []),
+        risks=parsed.get("risks", []),
+        benefits=parsed.get("benefits", []),
+    )
+
+
+@app.get("/food-insights/{food_name}", response_model=FoodInsights)
+async def get_food_insights(food_name: str):
+    log.info(f"[API] GET /food-insights/{food_name}")
+    return await query_claude_insights(food_name)
 
 
 @app.get("/health")
