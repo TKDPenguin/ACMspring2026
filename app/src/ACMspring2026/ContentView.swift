@@ -23,6 +23,7 @@ struct ContentView: View {
     @State private var isLoading = false
     @State private var identificationSource = ""
     @State private var debugLines: [String] = []
+    @State private var triggerCapture = false
     
     
     func pixelBuffer(from image: UIImage, size: CGSize) -> CVPixelBuffer? {
@@ -128,81 +129,99 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color.white
+                Color.black
                     .edgesIgnoringSafeArea(.all)
 
                 VStack(spacing: 20) {
-
-                    // Camera button
-                    Button("Show Camera") {
-                        showCamera = true
-                    }
-                    .sheet(isPresented: $showCamera) {
-                        CameraView(image: $selectedImage)
-                    }
-                    .onChange(of: selectedImage) { newImage in
-                        if let newImage = newImage {
-                            debugLines = []
-                            classifyImage(newImage)
-                        }
-                    }
-
-                    if let img = selectedImage {
-                        Image(uiImage: img)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxHeight: 220)
-                            .cornerRadius(10)
-                    }
-
-                    if isLoading {
-                        ProgressView("Identifying...")
-                            .padding()
-                    } else if !prediction.isEmpty {
-                        VStack(spacing: 10) {
-                            Text(prediction.replacingOccurrences(of: "_", with: " ").capitalized)
-                                .font(.title2.bold())
-                                .foregroundColor(.black)
-                                .multilineTextAlignment(.center)
-
-                            if identificationSource == "claude" {
-                                Text("Verified by Claude")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Button("View Nutrition Info") {
-                                showFoodInfo = true
-                            }
-                            .padding(.top, 10)
-                            .foregroundColor(.blue)
-                        }
+                    
+                    CameraView(image: $selectedImage, triggerCapture: $triggerCapture, isActive: Binding(
+                        get: { !showFoodInfo },
+                        set: { _ in }
+                    ))
                         .frame(maxWidth: .infinity)
-
-                        NavigationLink(
-                            destination: FoodInformationView(name: prediction, usdaQuery: usdaQuery, dataType: usdaDataType),
-                            isActive: $showFoodInfo
-                        ) { EmptyView() }
-                    }
-
-                    if !debugLines.isEmpty {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Debug")
-                                .font(.caption.bold())
-                                .foregroundColor(.secondary)
-                            ForEach(debugLines, id: \.self) { line in
-                                Text(line)
-                                    .font(.system(size: 11, design: .monospaced))
-                                    .foregroundColor(.primary)
+                        .frame(height: UIScreen.main.bounds.height * 0.55)
+                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                        .padding(.horizontal, 16)
+                        .padding(.top, 70)
+                        .onChange(of: selectedImage) { newImage in
+                            if let newImage = newImage {
+                                debugLines = []
+                                classifyImage(newImage)
                             }
                         }
-                        .padding(10)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(8)
+                    
+//                    Spacer()
+                    
+                    
+                    Button(action: {
+                        triggerCapture = true
+                    }) {
+                        ZStack {
+                            
+                            Circle()
+                                .fill(Color.white.opacity(0.3))
+                                .frame(width: 60, height: 60)
+                            
+                          
+                            Circle()
+                                .fill(Color.white.opacity(0.7))
+                                .frame(width: 48, height: 48)
+                        }
                     }
+                    .padding(.bottom, 20)
 
-                    Spacer()
+                    VStack(spacing: 12) {
+                        if isLoading {
+                            ProgressView("Identifying...")
+                                .padding()
+                        } else if !prediction.isEmpty {
+                            VStack(spacing: 1) {
+                                Text(prediction.replacingOccurrences(of: "_", with: " ").capitalized)
+                                    .font(.title2.bold())
+                                    .foregroundColor(.white)
+                                    .multilineTextAlignment(.center)
+
+        //                            if identificationSource == "claude" {
+        //                                Text("Verified by Claude")
+        //                                    .font(.caption)
+        //                                    .foregroundStyle(.secondary)
+        //                            }
+
+                                Button("View Nutrition Info") {
+                                    showFoodInfo = true
+                                }
+                                .padding(.top, 5)
+                                .foregroundColor(.white)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(5)
+                            .background(Color.blue)
+                            .cornerRadius(12)
+                        }
+                        
+                        Spacer()
+                    }
+                    .frame(height: 220)
+                    .frame(maxWidth: .infinity)
+
+//                    if !debugLines.isEmpty {
+//                        VStack(alignment: .leading, spacing: 4) {
+//                            Text("Debug")
+//                                .font(.caption.bold())
+//                                .foregroundColor(.secondary)
+//                            ForEach(debugLines, id: \.self) { line in
+//                                Text(line)
+//                                    .font(.system(size: 11, design: .monospaced))
+//                                    .foregroundColor(.primary)
+//                            }
+//                        }
+//                        .padding(10)
+//                        .frame(maxWidth: .infinity, alignment: .leading)
+//                        .background(Color(.systemGray6))
+//                        .cornerRadius(8)
+//                    }
+
+//                    Spacer()
                 }
                 .padding()
 
@@ -215,10 +234,12 @@ struct ContentView: View {
                         } label: {
                             WaterBottleButton(fillFraction: waterStore.log.fillFraction)
                         }
-                        .padding([.leading, .bottom], 20)
+                        .padding(.leading, 20)
+                        .padding(.bottom, 100)
                         Spacer()
                     }
                 }
+                .ignoresSafeArea(edges: .bottom)
             }
             .sheet(isPresented: $showWaterLog) {
                 NavigationStack {
@@ -226,15 +247,19 @@ struct ContentView: View {
                 }
                 .environmentObject(waterStore)
             }
+            .sheet(isPresented: $showFoodInfo) {
+                NavigationStack {
+                    FoodInformationView(name: prediction, usdaQuery: usdaQuery, dataType: usdaDataType)
+                }
+            }
 
             .background(Color.white.edgesIgnoringSafeArea(.all))
             .toolbarBackground(Color.white, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar).navigationBarHidden(true)
         }
     }
 }
 
 #Preview {
     ContentView()
-        .environmentObject(WaterStore())
 }
