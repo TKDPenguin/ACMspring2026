@@ -30,7 +30,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		9FAFA91C2F55E3F600C79536 /* Exceptions for "ACMspring2026" folder in "ACMspring2026" target */ = {
+		9F26B3902F6230B500F66C9D /* Exceptions for "ACMspring2026" folder in "ACMspring2026" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -43,7 +43,7 @@
 		9FE9BB2E2F38D7E500084870 /* ACMspring2026 */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				9FAFA91C2F55E3F600C79536 /* Exceptions for "ACMspring2026" folder in "ACMspring2026" target */,
+				9F26B3902F6230B500F66C9D /* Exceptions for "ACMspring2026" folder in "ACMspring2026" target */,
 			);
 			path = ACMspring2026;
 			sourceTree = "<group>";

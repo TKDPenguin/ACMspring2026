@@ -7,14 +7,12 @@
 import Foundation
 
 struct EssentialNutrients {
-    static var shared = EssentialNutrients()
-
-    var carbs: String = "0"
-    var sugars: String = "0"
-    var calories: String = "0"
-    var unsatFat: String = "0"
-    var protein: String = "0"
-    var satFat: String = "0"
+    var carbs: String = "N/A"
+    var sugars: String = "N/A"
+    var calories: String = "N/A"
+    var transFat: String = "N/A"
+    var protein: String = "N/A"
+    var satFat: String = "N/A"
 }
 
 protocol FoodData {

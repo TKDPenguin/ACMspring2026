@@ -81,6 +81,26 @@ struct FoodInformationView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.top, 60)
                 }
+                .padding(.horizontal, 20)
+                
+                Spacer()
+                
+                RoundedRectangle(cornerRadius: 25)
+                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                    .frame(height: 50)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
+            }
+            
+        }.task(id: name) {
+            guard !name.isEmpty else { return }
+            let cleanedName = name.replacingOccurrences(of: "_", with: " ")
+            foodData = try? await WebAPI.getFoodData(cleanedName)
+        }
+        
+    
+    }
+
 
                 Spacer(minLength: 30)
             }
