@@ -10,6 +10,7 @@ struct WaterLogView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var customText = ""
     @State private var goalText = ""
+    @State private var animatedFill: Double = 0
 
     private var unit: WaterUnit { store.log.unitPreference }
 
@@ -27,141 +28,230 @@ struct WaterLogView: View {
     }
 
     var body: some View {
-        List {
-            // Unit toggle
-            Section {
-                Picker("Unit", selection: Binding(
-                    get: { store.log.unitPreference },
-                    set: { newUnit in
-                        store.setUnit(newUnit)
-                        goalText = formatGoalText(for: newUnit)
-                    }
-                )) {
-                    Text("mL").tag(WaterUnit.ml)
-                    Text("cups").tag(WaterUnit.cups)
-                }
-                .pickerStyle(.segmented)
-            }
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
 
-            // Progress ring
-            Section {
-                ZStack {
-                    Circle()
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 16)
-                    Circle()
-                        .trim(from: 0, to: store.log.fillFraction)
-                        .stroke(Color.blue, style: StrokeStyle(lineWidth: 16, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .animation(.easeInOut, value: store.log.fillFraction)
-                    VStack(spacing: 4) {
-                        Text(unit.format(store.log.totalTodayMl))
-                            .font(.title2.bold())
-                        Text("of \(unit.format(store.log.dailyGoalMl))")
-                            .font(.caption)
+                    // Unit toggle
+                    Picker("Unit", selection: Binding(
+                        get: { store.log.unitPreference },
+                        set: { newUnit in
+                            store.setUnit(newUnit)
+                            goalText = formatGoalText(for: newUnit)
+                        }
+                    )) {
+                        Text("mL").tag(WaterUnit.ml)
+                        Text("cups").tag(WaterUnit.cups)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+
+                    // Big bottle hero
+                    VStack(spacing: 16) {
+                        BigWaterBottle(fillFraction: animatedFill)
+                            .frame(width: 120, height: 200)
+                            .onAppear {
+                                withAnimation(.easeInOut(duration: 1.0)) {
+                                    animatedFill = store.log.fillFraction
+                                }
+                            }
+                            .onChange(of: store.log.fillFraction) { newVal in
+                                withAnimation(.easeInOut(duration: 0.5)) {
+                                    animatedFill = newVal
+                                }
+                            }
+
+                        VStack(spacing: 4) {
+                            Text(unit.format(store.log.totalTodayMl))
+                                .font(.system(size: 36, weight: .bold, design: .rounded))
+                                .foregroundColor(.primary)
+                            Text("of \(unit.format(store.log.dailyGoalMl)) goal")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+
+                        // Progress bar
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color(.systemGray5))
+                                    .frame(height: 10)
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.blue.gradient)
+                                    .frame(width: geo.size.width * CGFloat(animatedFill), height: 10)
+                                    .animation(.easeInOut(duration: 0.5), value: animatedFill)
+                            }
+                        }
+                        .frame(height: 10)
+                        .padding(.horizontal, 40)
+                    }
+                    .padding(.vertical, 8)
+
+                    // Quick add buttons
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("QUICK ADD")
+                            .font(.caption.bold())
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 20)
+
+                        HStack(spacing: 12) {
+                            ForEach(quickAmounts, id: \.label) { item in
+                                Button {
+                                    store.addEntry(amountMl: item.ml)
+                                } label: {
+                                    VStack(spacing: 4) {
+                                        Image(systemName: "plus.circle.fill")
+                                            .font(.title2)
+                                            .foregroundColor(.blue)
+                                        Text(item.label)
+                                            .font(.caption.bold())
+                                            .foregroundColor(.primary)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(Color.white)
+                                    .cornerRadius(14)
+                                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+
+                    // Custom entry
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("CUSTOM AMOUNT")
+                            .font(.caption.bold())
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 20)
+
+                        HStack(spacing: 12) {
+                            TextField("Amount (\(unit.label))", text: $customText)
+                                .keyboardType(.decimalPad)
+                                .padding(14)
+                                .background(Color.white)
+                                .cornerRadius(12)
+                                .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+
+                            Button {
+                                if let value = Double(customText), value > 0 {
+                                    store.addEntry(amountMl: unit.toMl(value))
+                                    customText = ""
+                                }
+                            } label: {
+                                Text("Add")
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 14)
+                                    .background(Double(customText) != nil ? Color.blue : Color.gray)
+                                    .cornerRadius(12)
+                            }
+                            .disabled(Double(customText) == nil)
+                        }
+                        .padding(.horizontal, 20)
+                    }
+
+                    // Daily goal
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("DAILY GOAL")
+                            .font(.caption.bold())
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 20)
+
+                        HStack {
+                            TextField("Goal", text: $goalText)
+                                .keyboardType(.decimalPad)
+                                .onSubmit { commitGoal() }
+                            Text(unit.label)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(14)
+                        .background(Color.white)
+                        .cornerRadius(12)
+                        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                        .padding(.horizontal, 20)
+                    }
+
+                    // Today's log
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("TODAY'S LOG")
+                            .font(.caption.bold())
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 20)
+
+                        if sortedEntries.isEmpty {
+                            Text("No entries yet — start drinking! 💧")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity)
+                                .padding(20)
+                                .background(Color.white)
+                                .cornerRadius(14)
+                                .padding(.horizontal, 20)
+                        } else {
+                            VStack(spacing: 0) {
+                                ForEach(Array(sortedEntries.enumerated()), id: \.element.id) { i, entry in
+                                    HStack {
+                                        Image(systemName: "drop.fill")
+                                            .foregroundColor(.blue)
+                                            .font(.caption)
+                                        Text(entry.timestamp, style: .time)
+                                            .foregroundColor(.secondary)
+                                            .font(.subheadline)
+                                        Spacer()
+                                        Text(unit.format(entry.amountMl))
+                                            .font(.subheadline.bold())
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+
+                                    if i < sortedEntries.count - 1 {
+                                        Divider().padding(.leading, 16)
+                                    }
+                                }
+                            }
+                            .background(Color.white)
+                            .cornerRadius(14)
+                            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                            .padding(.horizontal, 20)
+                        }
+                    }
+
+                    // Clear all
+                    Button(role: .destructive) {
+                        store.clearAllEntries()
+                    } label: {
+                        Text("Clear All Entries")
+                            .font(.subheadline)
+                            .foregroundColor(.red)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color.white)
+                            .cornerRadius(12)
+                            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 30)
+                }
+            }
+            .background(Color(.systemGray6).edgesIgnoringSafeArea(.all))
+            .navigationTitle("Water Intake")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(.secondary)
                     }
                 }
-                .frame(width: 160, height: 160)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
             }
-
-            // Quick add
-            Section("Quick Add") {
-                HStack(spacing: 10) {
-                    ForEach(quickAmounts, id: \.label) { item in
-                        Button(item.label) {
-                            store.addEntry(amountMl: item.ml)
-                        }
-                        .buttonStyle(.bordered)
-                        .frame(maxWidth: .infinity)
-                    }
-                }
-                .padding(.vertical, 4)
+            .scrollDismissesKeyboard(.immediately)
+            .onAppear {
+                store.resetIfNewDay()
+                goalText = formatGoalText(for: unit)
             }
-
-            // Custom entry
-            Section("Custom") {
-                HStack {
-                    TextField("Amount (\(unit.label))", text: $customText)
-                        .keyboardType(.decimalPad)
-                    Button("Add") {
-                        if let value = Double(customText), value > 0 {
-                            store.addEntry(amountMl: unit.toMl(value))
-                            customText = ""
-                        }
-                    }
-                    .disabled(Double(customText) == nil)
-                }
-            }
-
-            // Today's log
-            Section("Today's Log") {
-                if sortedEntries.isEmpty {
-                    Text("No entries yet")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(sortedEntries) { entry in
-                        HStack {
-                            Text(entry.timestamp, style: .time)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text(unit.format(entry.amountMl))
-                        }
-                    }
-                    .onDelete { indexSet in
-                        for i in indexSet {
-                            store.removeEntry(id: sortedEntries[i].id)
-                        }
-                    }
-                }
-            }
-
-            // Daily goal
-            Section("Daily Goal") {
-                HStack {
-                    TextField("Goal", text: $goalText)
-                        .keyboardType(.decimalPad)
-                        .onSubmit { commitGoal() }
-                    Text(unit.label)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            // Debug
-            Section("Debug") {
-                HStack(spacing: 10) {
-                    ForEach(quickAmounts, id: \.label) { item in
-                        Button("−\(item.label)") {
-                            store.removeWater(amountMl: item.ml)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(.red)
-                        .frame(maxWidth: .infinity)
-                    }
-                }
-                .padding(.vertical, 4)
-                Button("Clear All", role: .destructive) {
-                    store.clearAllEntries()
-                }
-            }
-        }
-        .navigationTitle("Water Intake")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .scrollDismissesKeyboard(.immediately)
-        .onAppear {
-            store.resetIfNewDay()
-            goalText = formatGoalText(for: unit)
         }
     }
 
@@ -184,6 +274,93 @@ struct WaterLogView: View {
         }
     }
 }
+
+// big animated waterbottle
+struct BigWaterBottle: View {
+    let fillFraction: Double
+
+    private let lightBlue  = Color(red: 0.72, green: 0.93, blue: 0.98)
+    private let fillBlue   = Color(red: 0.10, green: 0.58, blue: 0.85)
+    private let strokeBlue = Color(red: 0.08, green: 0.45, blue: 0.70)
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+
+            ZStack(alignment: .top) {
+                // bottl background
+                BottleShape()
+                    .fill(lightBlue)
+                    .frame(width: w, height: h)
+
+                // Water fill rises from bottom through entire bottle
+                BottleShape()
+                    .fill(fillBlue)
+                    .frame(width: w, height: h)
+                    .mask(
+                        VStack(spacing: 0) {
+                            Spacer(minLength: 0)
+                            Rectangle()
+                                .frame(height: h * CGFloat(fillFraction))
+                        }
+                        .frame(width: w, height: h)
+                    )
+                    .animation(.easeInOut(duration: 0.6), value: fillFraction)
+
+                // outline on top
+                BottleShape()
+                    .stroke(strokeBlue, lineWidth: 2)
+                    .frame(width: w, height: h)
+
+                // percent label
+                Text("\(Int(fillFraction * 100))%")
+                    .font(.system(size: w * 0.22, weight: .bold, design: .rounded))
+                    .foregroundColor(fillFraction > 0.45 ? .white : fillBlue)
+                    .frame(width: w)
+                    .offset(y: h * 0.55)
+                    .animation(.easeInOut(duration: 0.3), value: fillFraction)
+            }
+        }
+    }
+}
+
+struct BottleShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width
+        let h = rect.height
+
+        // start at very top center-left (open top, no cap)
+        path.move(to: CGPoint(x: w * 0.36, y: 0))
+        path.addLine(to: CGPoint(x: w * 0.64, y: 0))
+        // neck right down
+        path.addLine(to: CGPoint(x: w * 0.64, y: h * 0.10))
+        // right shoulder curve out to body
+        path.addCurve(
+            to: CGPoint(x: w * 0.93, y: h * 0.26),
+            control1: CGPoint(x: w * 0.68, y: h * 0.14),
+            control2: CGPoint(x: w * 0.93, y: h * 0.18)
+        )
+        path.addLine(to: CGPoint(x: w * 0.93, y: h * 0.88))
+        // bottom curve
+        path.addQuadCurve(
+            to: CGPoint(x: w * 0.07, y: h * 0.88),
+            control: CGPoint(x: w * 0.50, y: h * 1.04)
+        )
+        // left body up
+        path.addLine(to: CGPoint(x: w * 0.07, y: h * 0.26))
+        // left shoulder curve in to neck
+        path.addCurve(
+            to: CGPoint(x: w * 0.36, y: h * 0.10),
+            control1: CGPoint(x: w * 0.07, y: h * 0.18),
+            control2: CGPoint(x: w * 0.32, y: h * 0.14)
+        )
+        path.closeSubpath()
+        return path
+    }
+}
+
 
 #Preview {
     NavigationStack {
