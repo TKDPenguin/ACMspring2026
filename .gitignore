@@ -12,3 +12,12 @@ DerivedData/
 build/
 
 Secrets.plist
+
+# Environment
+.env
+
+# Python
+__pycache__/
+
+# IDE
+.idea/
