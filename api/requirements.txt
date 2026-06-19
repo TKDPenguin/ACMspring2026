@@ -1,0 +1,12 @@
+kaggle
+opencv-python
+albumentations
+pillow
+pandas
+numpy
+fastapi
+uvicorn
+httpx
+python-dotenv
+requests
+anthropic
